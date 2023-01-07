@@ -1,0 +1,100 @@
+﻿using Core.Entities;
+using CsvHelper;
+using Microsoft.Extensions.Logging;
+using System.Globalization;
+using System.Reflection;
+
+namespace Infrastructure.Data;
+
+public class TiendaContextSeed
+{
+    public static async Task SeedAsync(TiendaContext context, ILoggerFactory loggerFactory)
+    {
+		try
+		{
+			var ruta = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+
+			if (!context.Marcas.Any())
+			{
+				using (var readerMarcas = new StreamReader(ruta + @"/Data/Csvs/marcas.csv"))
+				{
+					using (var csvMarcas = new CsvReader(readerMarcas, CultureInfo.InvariantCulture)) 
+					{
+						var marcas = csvMarcas.GetRecords<Marca>();
+						context.Marcas.AddRange(marcas);
+						await context.SaveChangesAsync();
+					}
+				}
+			}
+
+            if (!context.Categorias.Any())
+            {
+                using (var readerCategorias = new StreamReader(ruta + @"/Data/Csvs/categorias.csv"))
+                {
+                    using (var csvCategorias = new CsvReader(readerCategorias, CultureInfo.InvariantCulture))
+                    {
+                        var categorias = csvCategorias.GetRecords<Categoria>();
+                        context.Categorias.AddRange(categorias);
+                        await context.SaveChangesAsync();
+                    }
+                }
+            }
+
+            if (!context.Productos.Any())
+            {
+                using (var readerProductos = new StreamReader(ruta + @"/Data/Csvs/productos.csv"))
+                {
+                    using (var csvProductos = new CsvReader(readerProductos, CultureInfo.InvariantCulture))
+                    {
+                        var productosCsv = csvProductos.GetRecords<Producto>();
+
+                        List<Producto> productos = new List<Producto>();
+                        foreach (var producto in productosCsv)
+                        {
+                            productos.Add(new Producto
+                            {
+                                Id= producto.Id,
+                                Nombre = producto.Nombre,
+                                Precio = producto.Precio,
+                                FechaCreacion = producto.FechaCreacion,
+                                MarcaId = producto.MarcaId,
+                                CategoriaId = producto.CategoriaId,
+                            });
+                        }
+
+                        context.Productos.AddRange(productos);
+                        await context.SaveChangesAsync();
+                    }
+                }
+            }
+        }
+		catch (Exception ex)
+		{
+			var logger = loggerFactory.CreateLogger<TiendaContextSeed>();
+			logger.LogError(ex.Message);			
+		}
+    }
+
+    public static async Task SeedRolesAsync(TiendaContext context, ILoggerFactory loggerFactory)
+    {
+        try
+        {
+            if (!context.Roles.Any())
+            {
+                var roles = new List<Rol>()
+                        {
+                            new Rol{Id=1, Nombre="Administrador"},
+                            new Rol{Id=2, Nombre="Gerente"},
+                            new Rol{Id=3, Nombre="Empleado"},
+                        };
+                context.Roles.AddRange(roles);
+                await context.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            var logger = loggerFactory.CreateLogger<TiendaContextSeed>();
+            logger.LogError(ex.Message);
+        }
+    }
+}
